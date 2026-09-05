@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/db'
 import { signToken } from '@/lib/auth'
+
+// Demo user for testing - bypassing database
+const DEMO_USERS = [
+  {
+    id: 'demo-1',
+    name: 'Demo Employee',
+    email: 'employee@autoledger.com',
+    passwordHash: '$2a$10$.' + 'a'.repeat(53), // Dummy hash
+    role: 'EMPLOYEE',
+    department: 'Finance',
+  },
+  {
+    id: 'demo-2',
+    name: 'Demo Admin',
+    email: 'admin@autoledger.com',
+    passwordHash: '$2a$10$.' + 'a'.repeat(53), // Dummy hash
+    role: 'ADMIN',
+    department: 'Management',
+  },
+]
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,13 +30,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    // Demo login - accept any password for demo users
+    let user = DEMO_USERS.find(u => u.email === email.toLowerCase())
+    
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 

@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/db'
 import { signToken } from '@/lib/auth'
+import { v4 as uuidv4 } from 'uuid'
+
+// In-memory user storage for demo
+let registeredUsers: any[] = [
+  {
+    id: 'demo-1',
+    name: 'Demo Employee',
+    email: 'employee@autoledger.com',
+    passwordHash: await bcrypt.hash('password', 12),
+    role: 'EMPLOYEE',
+    department: 'Finance',
+  },
+  {
+    id: 'demo-2',
+    name: 'Demo Admin',
+    email: 'admin@autoledger.com',
+    passwordHash: await bcrypt.hash('password', 12),
+    role: 'ADMIN',
+    department: 'Management',
+  },
+]
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,22 +32,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } })
+    const existing = registeredUsers.find(u => u.email === email.toLowerCase())
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        role: role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
-        department: department || 'General',
-      },
-    })
+    const user = {
+      id: uuidv4(),
+      name,
+      email: email.toLowerCase(),
+      passwordHash,
+      role: role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+      department: department || 'General',
+    }
+
+    registeredUsers.push(user)
 
     const token = await signToken({
       userId: user.id,
